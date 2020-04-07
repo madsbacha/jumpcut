@@ -1,8 +1,11 @@
 import soundfile as sf
 from math import floor
-from os import system
+from os import system, path
 import numpy as np
 import matplotlib.pyplot as plt
+
+def extract_audio(video_file, audio_file="audio.wav"):
+  system(f"ffmpeg -i {video_file} -vn -acodec pcm_s16le -ar 44100 -ac 2 {audio_file}")
 
 def average(data, f, t):
   if f >= t:
@@ -30,18 +33,22 @@ def trim(start, end, name):
 def concat(a, b, out):
   return f"[v{a}][v{b}]concat[v{out}];[a{a}][a{b}]concat=v=0:a=1[a{out}]"
 
+if not path.isfile("audio.wav") and path.isfile("video.mp4"):
+  extract_audio("video.mp4", "audio.wav")
+
+info = sf.info('audio.wav')
+second_sections = int(info.samplerate / 1024)
+blocksize = int(info.samplerate/second_sections)
+
 rms = [np.sqrt(np.mean(block**2)) for block in
-       sf.blocks('audio.wav', blocksize=11025, overlap=512)]
-plt.plot(rms[0:4*20])
+       sf.blocks('audio.wav', blocksize=blocksize, overlap=512)]
+
+audio_limit = 0.01
+
+plt.plot(rms)
+x=np.linspace(0,len(rms), len(rms))
+plt.plot(x, x*0+audio_limit, '-r', label='audio limit')
 plt.show()
-
-exit()
-
-data, samplerate = sf.read('audio.wav')
-# npdata = np.asarray(data, dtype=np.float32)
-
-slice_length = int(samplerate * 0.5)
-audio_limit = 0.15
 
 removed_sections = []
 
@@ -49,23 +56,19 @@ new_section_start = None
 new_section_end = None
 new_section_count = 0
 
-i = slice_length
-max_length = len(data)
-# max_length = samplerate * 30
-while i < max_length:
-  avg = average(data, i - slice_length, i)
-  if avg < audio_limit:
+for i, block in enumerate(rms):
+  if block < audio_limit:
+    print(block)
     if new_section_count == 0:
-      new_section_start = i - slice_length
-    new_section_end = i
+      new_section_start = blocksize * i - 1
+    new_section_end = blocksize * i
     new_section_count += 1
   elif new_section_count > 0:
-    if new_section_count >= 2:
-      removed_sections.append([new_section_start / samplerate, new_section_end / samplerate])
+    if new_section_count >= (int(second_sections) * 0.75):
+      removed_sections.append([new_section_start / info.samplerate, new_section_end / info.samplerate])
     new_section_start = None
     new_section_end = None
     new_section_count = 0
-  i += slice_length
 
 max_names = len(removed_sections) + 1 + len(removed_sections) + 1
 out = []
@@ -75,16 +78,14 @@ if removed_sections[0][0] > 0.0:
   name_i += 1
 
 for i in range(1, len(removed_sections)):
-  name = hex(name_i)
+  out.append(trim(removed_sections[i-1][1], removed_sections[i][0], hex(name_i)))
   name_i += 1
-  out.append(trim(removed_sections[i-1][1], removed_sections[i][0], name))
 
 out.append(trim(
   removed_sections[len(removed_sections) - 1][1],
-  max_length / samplerate,
+  blocksize * len(rms) / info.samplerate,
   hex(name_i)))
 name_i += 1
-
 
 out.append(concat(
     hex(0),
@@ -92,7 +93,7 @@ out.append(concat(
     hex(name_i)
     ))
 name_i += 1
-for i in range(2, len(removed_sections) + 1):
+for i in range(2, len(removed_sections)):
   out.append(concat(
     hex(name_i - 1),
     hex(i),
@@ -101,11 +102,11 @@ for i in range(2, len(removed_sections) + 1):
   name_i += 1
 name_i -= 1
 
-cmd = f"ffmpeg -i video.mp4 -filter_complex '{';'.join(out)}' -map '[v{hex(name_i)}]' -map '[a{hex(name_i)}]' out.mp4"
+cmd = f"ffmpeg -i video.mp4 -filter_complex \"{';'.join(out)}\" -map \"[v{hex(name_i)}]\" -map \"[a{hex(name_i)}]\" out.mp4"
 
 with open('cmd.txt', 'w') as f:
   f.write(cmd)
 
 # print(cmd)
 
-# system(cmd)
+system(cmd)
