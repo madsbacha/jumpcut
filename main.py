@@ -78,7 +78,7 @@ if __name__ == '__main__':
         name_i += 1
     name_i -= 1
 
-    cmd = f"ffmpeg -i video.mp4 -y -filter_complex \"{';'.join(out)}\" -map \"[v{hex(name_i)}]\" -map \"[a{hex(name_i)}]\" out.mp4"
+    cmd = f"ffmpeg -i video.mp4 -y -preset veryfast -filter_complex \"{';'.join(out)};[v{hex(name_i)}]fps=fps=1,scale=w=-2:h=ih/2[v{hex(name_i+1)}]\" -map \"[v{hex(name_i+1)}]\" -map \"[a{hex(name_i)}]\" out.mp4"
 
     # with open('cmd.txt', 'w') as f:
     #     f.write(cmd)
