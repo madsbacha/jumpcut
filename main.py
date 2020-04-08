@@ -7,7 +7,7 @@ import numpy.ma as ma
 
 
 def extract_audio(video_file, audio_file="audio.wav"):
-    system(f"ffmpeg -i {video_file} -vn -acodec pcm_s16le -ar 44100 -ac 2 {audio_file}")
+    system(f"ffmpeg -i {video_file} -vn -acodec pcm_s16le -ar 44100 -ac 1 {audio_file}")
 
 
 def trim(start, end, name):
