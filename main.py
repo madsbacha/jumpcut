@@ -34,6 +34,7 @@ if __name__ == '__main__':
     peaks, _ = find_peaks(data, height=0)
     audio_limit = 0.01
     padding = 0.25
+    max_section_spacing = 1.5
 
     masked_peaks = ma.masked_where(data[peaks] < audio_limit, peaks)
 
@@ -48,7 +49,7 @@ if __name__ == '__main__':
         sections[0][0] = 0
 
     for i in range(1, len(clumped_masked_peaks)):
-        if peaks[clumped_masked_peaks[i-1].stop - 1] + samplerate * (padding * 2) >= peaks[clumped_masked_peaks[i].start]:
+        if peaks[clumped_masked_peaks[i-1].stop - 1] + samplerate * max_section_spacing >= peaks[clumped_masked_peaks[i].start]:
             sections[len(sections) - 1][1] = (peaks[clumped_masked_peaks[i].stop - 1] + samplerate * padding) / samplerate
         else:
             sections.append([
