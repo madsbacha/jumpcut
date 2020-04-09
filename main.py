@@ -1,7 +1,6 @@
 import soundfile as sf
 from os import system, path, remove
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 import numpy.ma as ma
 import argparse
